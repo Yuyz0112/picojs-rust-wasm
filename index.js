@@ -30,7 +30,7 @@ Promise.all([
   fetch('http://localhost:5500/facefinder').then((res) => res.arrayBuffer()),
 ]).then(([mod, buffer]) => {
   const bytes = new Uint8Array(buffer);
-  // 152
+  // 15
   console.time('unpack');
   const pico = mod.Pico.new();
   pico.unpack_cascade(bytes);

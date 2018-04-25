@@ -1,5 +1,8 @@
 #![feature(proc_macro, wasm_custom_section, wasm_import_module)]
 #![feature(iterator_step_by)]
+#![feature(test)]
+
+extern crate test;
 
 extern crate byteorder;
 extern crate wasm_bindgen;
@@ -10,16 +13,16 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
+    // #[wasm_bindgen(js_namespace = console)]
     // fn log(s1: i8);
     // fn log(s1: i32, s2: i32);
-    fn log(s1: i32, s2: i32, s3: f32, s4: f32);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_string(a: &str);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_one(a: f32);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_two(a: isize, b: isize);
+    // fn log(s1: i32, s2: i32, s3: f32, s4: f32);
+    // #[wasm_bindgen(js_namespace = console, js_name = log)]
+    // fn log_string(a: &str);
+    // #[wasm_bindgen(js_namespace = console, js_name = log)]
+    // fn log_one(a: f32);
+    // #[wasm_bindgen(js_namespace = console, js_name = log)]
+    // fn log_two(a: isize, b: isize);
 }
 
 #[wasm_bindgen]
@@ -246,5 +249,27 @@ impl Pico {
                 - (*c1 as f32 - scale1 / 2.0).max(*c2 as f32 - scale2 / 2.0),
         );
         overr * overc / (scale1.powf(2.0) + scale2.powf(2.0) - overr * overc)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Read;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_pico(b: &mut Bencher) {
+        let mut file = File::open("./assets/facefinder").unwrap();
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).unwrap();
+
+        let mut pico = Pico::new();
+        pico.unpack_cascade(buf);
+
+        let params = RunParams::new(1000.0, 20.0, 1.1, 0.1);
+        let image = Image::new(225, 225, 225, vec![100_u8; 50625]);
+        b.iter(|| pico.run_cascade(&image, &params));
     }
 }
