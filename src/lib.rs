@@ -62,6 +62,9 @@ impl RunParams {
     }
 }
 
+struct Detection(i32, i32, f32, f32);
+struct Cluster(f32, f32, f32, f32);
+
 #[wasm_bindgen]
 pub struct Pico {
     tdepth: i32,
@@ -70,7 +73,7 @@ pub struct Pico {
     tcodes: Vec<u8>,
     tpreds: Vec<f32>,
     thresh: Vec<f32>,
-    detections: Vec<(i32, i32, f32, f32)>,
+    detections: Vec<Detection>,
 }
 
 #[wasm_bindgen]
@@ -142,7 +145,7 @@ impl Pico {
                 for c in (offset..*ncols as i32 - offset).step_by(step as usize) {
                     let q = self.classify_region(&r, &c, &scale, &pixels, &ldim);
                     if q > 0.0 {
-                        self.detections.push((r, c, scale, q));
+                        self.detections.push(Detection(r, c, scale, q));
                     }
                     // break;
                 }
@@ -151,6 +154,48 @@ impl Pico {
 
             scale *= scale_factor;
         }
+    }
+
+    pub fn cluster_detections(&mut self, iou_threshold: f32) -> Vec<f32> {
+        self.detections
+            .sort_by(|a, b| (a.3).partial_cmp(&b.3).unwrap());
+        let detections_lengh = self.detections.len();
+
+        let mut assignments: Vec<u8> = vec![0; detections_lengh];
+        let mut clusters: Vec<Cluster> = Vec::new();
+
+        for (i, det) in self.detections.iter().enumerate() {
+            if assignments[i] == 0 {
+                let mut r: i32 = 0;
+                let mut c: i32 = 0;
+                let mut scale: f32 = 0.0;
+                let mut q: f32 = 0.0;
+                let mut n: f32 = 0.0;
+                for j in i..detections_lengh {
+                    let compare_det = &self.detections[j];
+                    let Detection(r1, c1, scale1, q1) = compare_det;
+                    if self.calculate_iou(det, compare_det) > iou_threshold {
+                        assignments[j] = 1;
+                        r += r1;
+                        c += c1;
+                        scale += scale1;
+                        q += q1;
+                        n += 1.0;
+                    }
+                }
+                clusters.push(Cluster(r as f32 / n, c as f32 / n, scale / n as f32, q));
+            }
+        }
+
+        let mut flattened_clusters: Vec<f32> = Vec::new();
+        for cluster in clusters.iter() {
+            let Cluster(r, c, scale, q) = cluster;
+            flattened_clusters.push(*r);
+            flattened_clusters.push(*c);
+            flattened_clusters.push(*scale);
+            flattened_clusters.push(*q);
+        }
+        flattened_clusters
     }
 
     fn classify_region(&self, r: &i32, c: &i32, scale: &f32, pixels: &Vec<u8>, ldim: &i32) -> f32 {
@@ -188,11 +233,18 @@ impl Pico {
         o - self.thresh[(self.ntrees - 1) as usize]
     }
 
-    pub fn log_detections(&self) {
-        log_two(self.detections.len() as isize, 1);
-        for det in self.detections.iter() {
-            let (r, c, scale, q) = det;
-            log(*r, *c, *scale, *q);
-        }
+    fn calculate_iou(&self, det1: &Detection, det2: &Detection) -> f32 {
+        let Detection(r1, c1, scale1, _) = det1;
+        let Detection(r2, c2, scale2, _) = det2;
+        let zero: f32 = 0.0;
+        let overr = zero.max(
+            (*r1 as f32 + scale1 / 2.0).min(*r2 as f32 + scale2 / 2.0)
+                - (*r1 as f32 - scale1 / 2.0).max(*r2 as f32 - scale2 / 2.0),
+        );
+        let overc = zero.max(
+            (*c1 as f32 + scale1 / 2.0).min(*c2 as f32 + scale2 / 2.0)
+                - (*c1 as f32 - scale1 / 2.0).max(*c2 as f32 - scale2 / 2.0),
+        );
+        overr * overc / (scale1.powf(2.0) + scale2.powf(2.0) - overr * overc)
     }
 }

@@ -30,7 +30,7 @@ Promise.all([
   fetch('http://localhost:5500/facefinder').then((res) => res.arrayBuffer()),
 ]).then(([mod, buffer]) => {
   const bytes = new Uint8Array(buffer);
-  // 151
+  // 152
   console.time('unpack');
   const pico = mod.Pico.new();
   pico.unpack_cascade(bytes);
@@ -51,5 +51,24 @@ Promise.all([
   console.time('dets');
   pico.run_cascade(image, params);
   console.timeEnd('dets');
-  pico.log_detections();
+
+  // iou_threshold: f32
+  const dets = pico.cluster_detections(0.2);
+
+  qthresh = 5.0;
+  for (i = 0; i < dets.length; i += 4) {
+    // check the detection score
+    // if it's above the threshold, draw it
+    const r = dets[i];
+    const c = dets[i + 1];
+    const scale = dets[i + 2];
+    const q = dets[i + 3];
+    if (q > qthresh) {
+      ctx.beginPath();
+      ctx.arc(c, r, scale / 2, 0, 2 * Math.PI, false);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'red';
+      ctx.stroke();
+    }
+  }
 });
