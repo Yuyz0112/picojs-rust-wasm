@@ -17,6 +17,8 @@ extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_string(a: &str);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_one(a: f32);
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_two(a: isize, b: isize);
 }
 
@@ -108,7 +110,7 @@ impl Pico {
                 p = p + 4;
             }
 
-            let mut buff = &bytes[0..p + 4];
+            let mut buff = &bytes[p..p + 4];
             self.thresh.push(buff.read_f32::<LittleEndian>().unwrap());
             p = p + 4;
         }
@@ -142,7 +144,9 @@ impl Pico {
                     if q > 0.0 {
                         self.detections.push((r, c, scale, q));
                     }
+                    // break;
                 }
+                // break;
             }
 
             scale *= scale_factor;
@@ -170,6 +174,8 @@ impl Pico {
                     idx += 1;
                 }
             }
+
+            // break;
 
             o = o + self.tpreds
                 [self.tdepth_sqr as usize * i as usize + idx - self.tdepth_sqr as usize];

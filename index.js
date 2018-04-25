@@ -30,7 +30,7 @@ Promise.all([
   fetch('http://localhost:5500/facefinder').then((res) => res.arrayBuffer()),
 ]).then(([mod, buffer]) => {
   const bytes = new Uint8Array(buffer);
-  // 141
+  // 151
   console.time('unpack');
   const pico = mod.Pico.new();
   pico.unpack_cascade(bytes);
@@ -48,6 +48,8 @@ Promise.all([
   );
 
   // image: &Image, params: &RunParams
+  console.time('dets');
   pico.run_cascade(image, params);
+  console.timeEnd('dets');
   pico.log_detections();
 });
