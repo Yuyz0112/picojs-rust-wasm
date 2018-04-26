@@ -12,20 +12,6 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-extern "C" {
-    // #[wasm_bindgen(js_namespace = console)]
-    // fn log(s1: i8);
-    // fn log(s1: i32, s2: i32);
-    // fn log(s1: i32, s2: i32, s3: f32, s4: f32);
-    // #[wasm_bindgen(js_namespace = console, js_name = log)]
-    // fn log_string(a: &str);
-    // #[wasm_bindgen(js_namespace = console, js_name = log)]
-    // fn log_one(a: f32);
-    // #[wasm_bindgen(js_namespace = console, js_name = log)]
-    // fn log_two(a: isize, b: isize);
-}
-
-#[wasm_bindgen]
 pub struct Image {
     ldim: i32,
     ncols: usize,
@@ -144,15 +130,33 @@ impl Pico {
             let step = (1 as f32).max(shift_factor * scale) as i32;
             let offset = (scale / 2.0 + 1.0) as i32;
 
-            for r in (offset..*nrows as i32 - offset).step_by(step as usize) {
-                for c in (offset..*ncols as i32 - offset).step_by(step as usize) {
+            let mut r = offset;
+            loop {
+                if offset > *nrows as i32 / 2 {
+                    break;
+                }
+
+                let mut c = offset;
+                loop {
+                    if offset > *ncols as i32 / 2 {
+                        break;
+                    }
+
                     let q = self.classify_region(&r, &c, &scale, &pixels, &ldim);
                     if q > 0.0 {
                         self.detections.push(Detection(r, c, scale, q));
                     }
-                    // break;
+
+                    c += step;
+                    if c > (*ncols as i32 - offset) {
+                        break;
+                    }
                 }
-                // break;
+
+                r += step;
+                if r > (*nrows as i32 - offset) {
+                    break;
+                }
             }
 
             scale *= scale_factor;
@@ -207,10 +211,12 @@ impl Pico {
         let mut root = 0;
         let mut o: f32 = 0.0;
 
-        for i in 0..self.ntrees {
+        let mut i = 0;
+        loop {
             let mut idx = 1;
 
-            for _ in 0..self.tdepth {
+            let mut d = 0;
+            loop {
                 let left_idx = ((r + self.tcodes[root + 4 * idx + 0] as i8 as f32 * scale) as i32
                     >> 8) * ldim
                     + ((c + self.tcodes[root + 4 * idx + 1] as i8 as f32 * scale) as i32 >> 8);
@@ -221,9 +227,11 @@ impl Pico {
                 if pixels[left_idx as usize] <= pixels[right_idx as usize] {
                     idx += 1;
                 }
+                d += 1;
+                if d == self.tdepth {
+                    break;
+                }
             }
-
-            // break;
 
             o = o + self.tpreds
                 [self.tdepth_sqr as usize * i as usize + idx - self.tdepth_sqr as usize];
@@ -231,6 +239,11 @@ impl Pico {
                 return -1.0;
             }
             root += 4 * self.tdepth_sqr as usize;
+
+            i += 1;
+            if i == self.ntrees {
+                break;
+            }
         }
 
         o - self.thresh[(self.ntrees - 1) as usize]
@@ -260,6 +273,7 @@ mod tests {
     use test::Bencher;
 
     #[bench]
+    #[ignore]
     fn bench_pico(b: &mut Bencher) {
         let mut file = File::open("./assets/facefinder").unwrap();
         let mut buf = Vec::new();

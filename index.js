@@ -30,7 +30,7 @@ Promise.all([
   fetch('http://localhost:5500/facefinder').then((res) => res.arrayBuffer()),
 ]).then(([mod, buffer]) => {
   const bytes = new Uint8Array(buffer);
-  // 15
+  // 2
   console.time('unpack');
   const pico = mod.Pico.new();
   pico.unpack_cascade(bytes);
@@ -67,7 +67,7 @@ Promise.all([
       ctx.beginPath();
       ctx.arc(c, r, scale / 2, 0, 2 * Math.PI, false);
       ctx.lineWidth = 3;
-      ctx.strokeStyle = 'red';
+      ctx.strokeStyle = '#21e676';
       ctx.stroke();
     }
   }
