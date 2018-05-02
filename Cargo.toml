@@ -1,5 +1,5 @@
 [package]
-name = "wasm-example"
+name = "picojs-rust-wasm"
 version = "0.1.0"
 authors = ["yanzhen <yanzhen@xsky.com>"]
 

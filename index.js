@@ -116,7 +116,6 @@ var update_memory = instantiate_detection_memory(5); // last 5 frames
 
 var stats = new Stats();
 stats.showPanel(1);
-document.body.appendChild(stats.dom);
 
 const btn = document.querySelector('input[type="button"]');
 const width = 640;
@@ -135,6 +134,8 @@ Promise.all([
   let initialized = false;
 
   function button_callback() {
+    document.body.appendChild(stats.dom);
+
     if (initialized) return;
     //
     const ctx = document.getElementsByTagName('canvas')[0].getContext('2d');
