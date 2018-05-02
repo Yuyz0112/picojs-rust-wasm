@@ -6,6 +6,16 @@ Recently I found a great project [picojs](https://github.com/tehnokv/picojs) on 
 
 Since I'm a front-end engineer who is keen on Rust, I decided to implement picojs in rust and portal it to the browser via webassembly. I use [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) to interact between Rust and JavaScript.
 
+## Run the demo
+
+After clone this repo, do thew following things:
+
+```
+npm i
+npm run build
+npm run serve
+```
+
 ## What I already learned
 
 1.  The basic workflow of writing a webassembly module in rust.

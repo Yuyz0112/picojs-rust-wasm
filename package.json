@@ -2,6 +2,7 @@
   "name": "picojs-rust-wasm",
   "version": "1.0.0",
   "scripts": {
+    "build": "./build.sh",
     "serve": "webpack-dev-server"
   },
   "devDependencies": {
