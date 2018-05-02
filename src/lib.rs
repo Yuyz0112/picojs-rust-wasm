@@ -51,6 +51,7 @@ impl RunParams {
     }
 }
 
+#[derive(Clone)]
 struct Detection(i32, i32, f32, f32);
 struct Cluster(f32, f32, f32, f32);
 
@@ -63,6 +64,8 @@ pub struct Pico {
     tpreds: Vec<f32>,
     thresh: Vec<f32>,
     detections: Vec<Detection>,
+    detections_mem: Vec<Vec<Detection>>,
+    mem_idx: usize,
 }
 
 #[wasm_bindgen]
@@ -76,6 +79,8 @@ impl Pico {
             tpreds: Vec::new(),
             thresh: Vec::new(),
             detections: Vec::new(),
+            detections_mem: vec![Vec::new(); 5],
+            mem_idx: 0,
         }
     }
 
@@ -161,17 +166,23 @@ impl Pico {
 
             scale *= scale_factor;
         }
+
+        self.update_memory();
     }
 
     pub fn cluster_detections(&mut self, iou_threshold: f32) -> Vec<f32> {
-        self.detections
-            .sort_by(|a, b| (a.3).partial_cmp(&b.3).unwrap());
-        let detections_lengh = self.detections.len();
+        let mut detections: Vec<Detection> = self.detections_mem
+            .iter()
+            .flat_map(|v| v.iter())
+            .cloned()
+            .collect();
+        detections.sort_by(|a, b| (a.3).partial_cmp(&b.3).unwrap());
+        let detections_lengh = detections.len();
 
         let mut assignments: Vec<u8> = vec![0; detections_lengh];
         let mut clusters: Vec<Cluster> = Vec::new();
 
-        for (i, det) in self.detections.iter().enumerate() {
+        for (i, det) in detections.iter().enumerate() {
             if assignments[i] == 0 {
                 let mut r: i32 = 0;
                 let mut c: i32 = 0;
@@ -179,7 +190,7 @@ impl Pico {
                 let mut q: f32 = 0.0;
                 let mut n: f32 = 0.0;
                 for j in i..detections_lengh {
-                    let compare_det = &self.detections[j];
+                    let compare_det = &detections[j];
                     let Detection(r1, c1, scale1, q1) = compare_det;
                     if self.calculate_iou(det, compare_det) > iou_threshold {
                         assignments[j] = 1;
@@ -203,6 +214,11 @@ impl Pico {
             flattened_clusters.push(*q);
         }
         flattened_clusters
+    }
+
+    fn update_memory(&mut self) {
+        self.detections_mem[self.mem_idx] = self.detections.clone();
+        self.mem_idx = (self.mem_idx + 1) % self.detections_mem.len();
     }
 
     fn classify_region(&self, r: &i32, c: &i32, scale: &f32, pixels: &Vec<u8>, ldim: &i32) -> f32 {
@@ -284,6 +300,6 @@ mod tests {
 
         let params = RunParams::new(1000.0, 20.0, 1.1, 0.1);
         let image = Image::new(225, 225, 225, vec![100_u8; 50625]);
-        b.iter(|| pico.run_cascade(&image, &params));
+        b.iter(|| pico.run_cascade(test::black_box(&image), test::black_box(&params)));
     }
 }
